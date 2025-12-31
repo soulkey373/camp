@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>聖誕轉盤｜雪花飄落＋抽獎紀錄</title>
+  <style>
+    :root{
+      --bg: #0b1a14;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --accent: #e53935;
+      --accent2: #43a047;
+      --gold: #f6d36b;
+      --shadow: 0 18px 50px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 600px at 10% 10%, rgba(67,160,71,.25), transparent 60%),
+        radial-gradient(900px 600px at 90% 20%, rgba(229,57,53,.25), transparent 60%),
+        radial-gradient(900px 600px at 50% 100%, rgba(246,211,107,.18), transparent 70%),
+        linear-gradient(180deg, #07120e 0%, #0b1a14 60%, #07120e 100%);
+      min-height: 100vh;
+      display:flex; align-items:center; justify-content:center;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Snow canvas behind everything */
+    #snow{
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.9;
+    }
+
+    .app{
+      width: min(1180px, 100%);
+      display:grid;
+      grid-template-columns: 430px 1fr;
+      gap: 18px;
+      position: relative;
+      z-index: 1;
+    }
+    @media (max-width: 980px){
+      .app{ grid-template-columns: 1fr; }
+    }
+    .panel{
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+    .header{
+      padding: 16px 18px;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), transparent);
+    }
+    .title{
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .title h1{ margin:0; font-size: 18px; letter-spacing:.5px; }
+    .title p{ margin:0; font-size: 12.5px; color: var(--muted); }
+    .badge{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(246,211,107,.14);
+      border: 1px solid rgba(246,211,107,.25);
+      color: rgba(246,211,107,.95);
+      white-space:nowrap;
+    }
+    .content{ padding: 16px 18px; }
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    label{ display:block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+    input, textarea, select{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus{
+      border-color: rgba(246,211,107,.45);
+      box-shadow: 0 0 0 3px rgba(246,211,107,.16);
+    }
+    textarea{
+      min-height: 170px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    .btns{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; }
+    button{
+      cursor:pointer;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    button:hover{ background: rgba(255,255,255,.14); }
+    button:active{ transform: translateY(1px); }
+    .primary{
+      background: linear-gradient(135deg, rgba(229,57,53,.90), rgba(246,211,107,.55));
+      border-color: rgba(246,211,107,.35);
+      color: #111;
+      font-weight: 700;
+    }
+    .secondary{
+      background: linear-gradient(135deg, rgba(67,160,71,.85), rgba(246,211,107,.35));
+      border-color: rgba(246,211,107,.25);
+      color: #111;
+      font-weight: 700;
+    }
+    .danger{
+      background: rgba(229,57,53,.18);
+      border-color: rgba(229,57,53,.35);
+    }
+    .hint{
+      font-size: 12.5px; color: var(--muted);
+      margin-top: 10px; line-height: 1.5;
+    }
+    .split{
+      height: 1px; background: rgba(255,255,255,.10);
+      margin: 14px 0;
+    }
+
+    /* Wheel area */
+    .wheelWrap{
+      position: relative;
+      display:flex; flex-direction:column;
+      min-height: 560px;
+    }
+    .wheelStage{
+      display:flex; align-items:center; justify-content:center;
+      padding: 18px;
+      position: relative;
+      height: 100%;
+      min-height: 520px;
+    }
+    #wheel{
+      width: min(520px, 92vw);
+      height: min(520px, 92vw);
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.12), rgba(0,0,0,.12) 55%, rgba(0,0,0,.18));
+      box-shadow: 0 20px 70px rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .pointer{
+      position:absolute;
+      top: 26px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 28px solid var(--gold);
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
+    }
+    .knob{
+      position:absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 86px; height: 86px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), rgba(0,0,0,.18));
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 16px 40px rgba(0,0,0,.55);
+      display:flex; align-items:center; justify-content:center;
+      font-weight: 800;
+      letter-spacing: .5px;
+      color: rgba(255,255,255,.92);
+      text-shadow: 0 1px 0 rgba(0,0,0,.5);
+      pointer-events:none;
+    }
+    .resultBar{
+      padding: 14px 18px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,.14));
+    }
+    .result{
+      display:flex; flex-direction:column; gap:4px;
+      min-width: 220px;
+    }
+    .result .label{ font-size: 12.5px; color: var(--muted); }
+    .result .name{
+      font-size: 20px; font-weight: 900;
+      color: rgba(246,211,107,.98);
+      letter-spacing: .3px;
+    }
+    .small{
+      font-size: 12.5px; color: var(--muted);
+      text-align:right;
+      max-width: 360px;
+    }
+    .toggle{
+      display:flex; align-items:center; gap:10px;
+      margin-top: 10px;
+    }
+    .toggle input{ width: 18px; height: 18px; }
+
+    /* Log panel */
+    .logList{
+      margin-top: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(0,0,0,.14);
+    }
+    .logHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), transparent);
+      gap: 12px;
+    }
+    .logHeader .meta{
+      font-size: 12.5px; color: var(--muted);
+    }
+    .logBody{
+      max-height: 220px;
+      overflow:auto;
+    }
+    .logItem{
+      padding: 10px 12px;
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .logItem:last-child{ border-bottom: none; }
+    .logItem .left{
+      display:flex; flex-direction:column; gap: 3px;
+      min-width: 0;
+    }
+    .logItem .who{
+      font-weight: 800;
+      color: rgba(246,211,107,.98);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 260px;
+    }
+    .logItem .time{
+      font-size: 12px;
+      color: rgba(255,255,255,.65);
+    }
+    .logItem .idx{
+      font-size: 12px;
+      color: rgba(255,255,255,.55);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="snow"></canvas>
+
+  <div class="app">
+    <!-- Control panel -->
+    <section class="panel">
+      <div class="header">
+        <div class="title">
+          <h1>聖誕轉盤</h1>
+          <p>支援自訂名單、人數快速產生、雪花背景、抽獎紀錄。</p>
+        </div>
+        <div class="badge">Xmas Wheel</div>
+      </div>
+
+      <div class="content">
+        <div class="row">
+          <div>
+            <label for="count">人數（快速產生用）</label>
+            <input id="count" type="number" min="1" step="1" value="8" />
+          </div>
+          <div>
+            <label for="template">快速產生格式</label>
+            <select id="template">
+              <option value="玩家">玩家1～玩家N</option>
+              <option value="同事">同事1～同事N</option>
+              <option value="禮物">禮物1～禮物N</option>
+              <option value="自訂">自訂前綴（用下方）</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label for="prefix">自訂前綴（template 選「自訂」時）</label>
+            <input id="prefix" type="text" placeholder="例如：小隊 / 參加者 / A組" />
+          </div>
+          <div style="display:flex; align-items:flex-end; gap:10px;">
+            <button class="secondary" id="gen">依人數產生名單</button>
+            <button id="apply">套用名單到轉盤</button>
+          </div>
+        </div>
+
+        <div class="split"></div>
+
+        <div>
+          <label for="names">名單（每行一個名字）</label>
+          <textarea id="names">玩家1
+玩家2
+玩家3
+玩家4
+玩家5
+玩家6
+玩家7
+玩家8</textarea>
+
+          <div class="toggle">
+            <input id="removeOnWin" type="checkbox" />
+            <label for="removeOnWin" style="margin:0;">抽中後移除（避免重複）</label>
+          </div>
+
+          <div class="row3" style="margin-top:10px;">
+            <div>
+              <label for="spinRounds">旋轉圈數（基準）</label>
+              <input id="spinRounds" type="number" min="3" max="30" step="1" value="10" />
+            </div>
+            <div>
+              <label for="spinDuration">旋轉秒數</label>
+              <input id="spinDuration" type="number" min="2" max="12" step="0.5" value="5" />
+            </div>
+            <div style="display:flex; align-items:flex-end; gap:10px;">
+              <button class="primary" id="spin">開始旋轉</button>
+              <button class="danger" id="reset">重置</button>
+            </div>
+          </div>
+
+          <div class="hint">
+            <div>提示：</div>
+            <ol style="margin:6px 0 0 18px; padding:0;">
+              <li>名單修改後記得按「套用名單到轉盤」。</li>
+              <li>抽獎紀錄會記下每次結果（含時間）。</li>
+              <li>勾選「抽中後移除」可避免重複中獎。</li>
+            </ol>
+          </div>
+
+          <div class="split"></div>
+
+          <!-- Log -->
+          <div class="logList">
+            <div class="logHeader">
+              <div class="meta" id="logMeta">抽獎紀錄：0 筆</div>
+              <div style="display:flex; gap:10px;">
+                <button id="copyLog">複製紀錄</button>
+                <button class="danger" id="clearLog">清空紀錄</button>
+              </div>
+            </div>
+            <div class="logBody" id="logBody"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Wheel panel -->
+    <section class="panel wheelWrap">
+      <div class="header">
+        <div class="title">
+          <h1>轉盤</h1>
+          <p>指針固定在上方，停止時指到的扇區為抽中者。</p>
+        </div>
+        <div class="badge" id="statusBadge">未開始</div>
+      </div>
+
+      <div class="wheelStage">
+        <div class="pointer" aria-hidden="true"></div>
+        <canvas id="wheel" width="900" height="900"></canvas>
+        <div class="knob">XMAS</div>
+      </div>
+
+      <div class="resultBar">
+        <div class="result">
+          <div class="label">抽中結果</div>
+          <div class="name" id="winner">—</div>
+        </div>
+        <div class="small" id="remain">剩餘：—</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ---------- Utilities ----------
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+    const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
+    const slicePalettes = [
+      { fill: "rgba(229,57,53,0.90)", stroke: "rgba(255,255,255,0.18)" }, // red
+      { fill: "rgba(67,160,71,0.90)",  stroke: "rgba(255,255,255,0.18)" }, // green
+      { fill: "rgba(246,211,107,0.92)",stroke: "rgba(0,0,0,0.18)" },       // gold
+      { fill: "rgba(33,150,243,0.62)", stroke: "rgba(255,255,255,0.16)" }, // blue
+      { fill: "rgba(156,39,176,0.52)", stroke: "rgba(255,255,255,0.16)" }, // purple
+      { fill: "rgba(255,255,255,0.12)",stroke: "rgba(255,255,255,0.18)" }, // light
+    ];
+
+    const fmtTime = (d) => {
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+
+    // ---------- State ----------
+    let items = [];
+    let angle = 0;
+    let spinning = false;
+
+    // logs
+    let logs = []; // {time: Date, name: string}
+    const LOG_KEY = "xmas_wheel_logs_v1";
+
+    // ---------- DOM ----------
+    const wheel = document.getElementById("wheel");
+    const wctx = wheel.getContext("2d");
+
+    const elNames = document.getElementById("names");
+    const elCount = document.getElementById("count");
+    const elTemplate = document.getElementById("template");
+    const elPrefix = document.getElementById("prefix");
+    const elRemoveOnWin = document.getElementById("removeOnWin");
+    const elSpinRounds = document.getElementById("spinRounds");
+    const elSpinDuration = document.getElementById("spinDuration");
+
+    const elWinner = document.getElementById("winner");
+    const elRemain = document.getElementById("remain");
+    const elStatusBadge = document.getElementById("statusBadge");
+
+    const elLogBody = document.getElementById("logBody");
+    const elLogMeta = document.getElementById("logMeta");
+
+    // ---------- Buttons ----------
+    document.getElementById("gen").addEventListener("click", () => {
+      const n = clamp(parseInt(elCount.value || "1", 10), 1, 999);
+      const mode = elTemplate.value;
+      let prefix = "玩家";
+      if (mode === "自訂") prefix = (elPrefix.value || "參加者").trim();
+      else prefix = mode;
+
+      const lines = [];
+      for (let i = 1; i <= n; i++) lines.push(`${prefix}${i}`);
+      elNames.value = lines.join("\n");
+    });
+
+    document.getElementById("apply").addEventListener("click", () => {
+      const list = parseNames(elNames.value);
+      if (list.length < 2) {
+        alert("名單至少需要 2 個項目，才能做轉盤。");
+        return;
+      }
+      items = list;
+      elWinner.textContent = "—";
+      setStatus("已套用名單");
+      drawWheel();
+      updateRemain();
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      spinning = false;
+      angle = 0;
+      items = parseNames(elNames.value);
+      elWinner.textContent = "—";
+      setStatus("已重置");
+      drawWheel();
+      updateRemain();
+    });
+
+    document.getElementById("spin").addEventListener("click", () => {
+      if (spinning) return;
+      if (items.length < 2) {
+        alert("名單至少需要 2 個項目，才能旋轉。");
+        return;
+      }
+      spin();
+    });
+
+    document.getElementById("clearLog").addEventListener("click", () => {
+      logs = [];
+      persistLogs();
+      renderLogs();
+    });
+
+    document.getElementById("copyLog").addEventListener("click", async () => {
+      const text = exportLogsText();
+      try{
+        await navigator.clipboard.writeText(text);
+        alert("已複製抽獎紀錄到剪貼簿。");
+      }catch(e){
+        // fallback
+        prompt("無法直接存取剪貼簿，請手動複製：", text);
+      }
+    });
+
+    // ---------- Helpers ----------
+    function setStatus(text){ elStatusBadge.textContent = text; }
+
+    function parseNames(text){
+      return text
+        .split(/\r?\n/g)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+    }
+
+    function updateRemain(){
+      elRemain.textContent = `剩餘：${items.length} 人`;
+    }
+
+    function persistLogs(){
+      try{
+        const data = logs.map(x => ({ t: x.time.toISOString(), n: x.name }));
+        localStorage.setItem(LOG_KEY, JSON.stringify(data));
+      }catch(_){}
+    }
+
+    function loadLogs(){
+      try{
+        const raw = localStorage.getItem(LOG_KEY);
+        if (!raw) return [];
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr.map(x => ({ time: new Date(x.t), name: x.n })) : [];
+      }catch(_){
+        return [];
+      }
+    }
+
+    function addLog(name){
+      logs.unshift({ time: new Date(), name });
+      persistLogs();
+      renderLogs();
+    }
+
+    function renderLogs(){
+      elLogMeta.textContent = `抽獎紀錄：${logs.length} 筆`;
+
+      if (logs.length === 0){
+        elLogBody.innerHTML = `<div class="logItem"><div class="left"><div class="who">—</div><div class="time">尚無紀錄</div></div><div class="idx"></div></div>`;
+        return;
+      }
+
+      elLogBody.innerHTML = logs.map((x, i) => {
+        const time = fmtTime(x.time);
+        const idx = logs.length - i; // show as 1..n in chronological-ish
+        return `
+          <div class="logItem">
+            <div class="left">
+              <div class="who">${escapeHtml(x.name)}</div>
+              <div class="time">${time}</div>
+            </div>
+            <div class="idx">#${idx}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function exportLogsText(){
+      if (logs.length === 0) return "（尚無抽獎紀錄）";
+      // export newest first
+      return logs.map((x, i) => `${i+1}. ${fmtTime(x.time)} － ${x.name}`).join("\n");
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    // ---------- Wheel Drawing ----------
+    function drawWheel(){
+      const W = wheel.width, H = wheel.height;
+      const cx = W / 2, cy = H / 2;
+      const r = Math.min(W, H) * 0.44;
+
+      wctx.clearRect(0,0,W,H);
+
+      // glow ring
+      wctx.save();
+      wctx.translate(cx, cy);
+      wctx.beginPath();
+      wctx.arc(0,0,r*1.05,0,Math.PI*2);
+      wctx.strokeStyle = "rgba(246,211,107,0.22)";
+      wctx.lineWidth = r*0.08;
+      wctx.stroke();
+      wctx.restore();
+
+      if (items.length === 0){
+        wctx.save();
+        wctx.translate(cx, cy);
+        wctx.fillStyle = "rgba(255,255,255,0.75)";
+        wctx.font = "700 28px system-ui, sans-serif";
+        wctx.textAlign = "center";
+        wctx.fillText("請先套用名單", 0, -10);
+        wctx.fillStyle = "rgba(255,255,255,0.55)";
+        wctx.font = "400 18px system-ui, sans-serif";
+        wctx.fillText("左側輸入名單後按「套用名單到轉盤」", 0, 22);
+        wctx.restore();
+        return;
+      }
+
+      const n = items.length;
+      const slice = (Math.PI * 2) / n;
+
+      wctx.save();
+      wctx.translate(cx, cy);
+      wctx.rotate(angle);
+
+      for (let i = 0; i < n; i++){
+        const start = i * slice;
+        const end = start + slice;
+
+        const p = slicePalettes[i % slicePalettes.length];
+
+        // slice
+        wctx.beginPath();
+        wctx.moveTo(0,0);
+        wctx.arc(0,0,r,start,end);
+        wctx.closePath();
+        wctx.fillStyle = p.fill;
+        wctx.fill();
+        wctx.strokeStyle = p.stroke;
+        wctx.lineWidth = 2;
+        wctx.stroke();
+
+        // inner line
+        wctx.save();
+        wctx.rotate(start + slice/2);
+        wctx.beginPath();
+        wctx.moveTo(r*0.18, 0);
+        wctx.lineTo(r*0.94, 0);
+        wctx.strokeStyle = "rgba(255,255,255,0.08)";
+        wctx.lineWidth = 2;
+        wctx.stroke();
+        wctx.restore();
+
+        // text
+        const label = items[i];
+        wctx.save();
+        wctx.rotate(start + slice/2);
+        wctx.textAlign = "right";
+        wctx.textBaseline = "middle";
+
+        let fs = 30;
+        if (label.length >= 8) fs = 22;
+        if (label.length >= 12) fs = 18;
+
+        wctx.font = `800 ${fs}px system-ui, sans-serif`;
+        const lightText = (i % slicePalettes.length === 2) ? "rgba(20,20,20,0.90)" : "rgba(255,255,255,0.93)";
+        wctx.fillStyle = lightText;
+        wctx.shadowColor = "rgba(0,0,0,0.35)";
+        wctx.shadowBlur = 6;
+        wctx.fillText(label, r*0.92, 0);
+        wctx.restore();
+      }
+
+      wctx.restore();
+
+      // outer border
+      wctx.save();
+      wctx.translate(cx, cy);
+      wctx.beginPath();
+      wctx.arc(0,0,r,0,Math.PI*2);
+      wctx.strokeStyle = "rgba(255,255,255,0.14)";
+      wctx.lineWidth = 4;
+      wctx.stroke();
+      wctx.restore();
+    }
+
+    function getWinnerIndex(){
+      const n = items.length;
+      const slice = (Math.PI * 2) / n;
+
+      const pointerAngle = -Math.PI / 2;
+      let a = (pointerAngle - angle) % (Math.PI * 2);
+      if (a < 0) a += Math.PI * 2;
+
+      const idx = Math.floor(a / slice);
+      return clamp(idx, 0, n - 1);
+    }
+
+    function spin(){
+      spinning = true;
+      setStatus("旋轉中…");
+
+      const baseRounds = clamp(parseInt(elSpinRounds.value || "10", 10), 3, 30);
+      const duration = clamp(parseFloat(elSpinDuration.value || "5"), 2, 12);
+
+      const targetIndex = Math.floor(Math.random() * items.length);
+
+      const n = items.length;
+      const slice = (Math.PI * 2) / n;
+
+      const pointerAngle = -Math.PI / 2;
+      const targetCenter = (targetIndex + 0.5) * slice;
+      let angleEnd = pointerAngle - targetCenter;
+
+      const extra = (Math.PI * 2) * (baseRounds + Math.random()*2.5);
+      const current = angle;
+
+      const norm2pi = x => {
+        x = x % (Math.PI*2);
+        if (x < 0) x += Math.PI*2;
+        return x;
+      };
+
+      const currentN = norm2pi(current);
+      const endN = norm2pi(angleEnd);
+
+      let delta = endN - currentN;
+      if (delta < 0) delta += Math.PI*2;
+
+      const finalAngle = current + extra + delta;
+
+      const startTime = performance.now();
+      const startAngle = angle;
+
+      function frame(now){
+        const t = (now - startTime) / (duration * 1000);
+        const tt = clamp(t, 0, 1);
+        const eased = easeOutCubic(tt);
+
+        angle = startAngle + (finalAngle - startAngle) * eased;
+        drawWheel();
+
+        if (tt < 1){
+          requestAnimationFrame(frame);
+        } else {
+          spinning = false;
+
+          const idx = getWinnerIndex();
+          const name = items[idx] ?? "—";
+          elWinner.textContent = name;
+          addLog(name);
+
+          setStatus("已停止");
+
+          if (elRemoveOnWin.checked && items.length > 1){
+            items.splice(idx, 1);
+            drawWheel();
+            updateRemain();
+            setStatus("已停止（已移除抽中者）");
+          } else {
+            updateRemain();
+          }
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ---------- Snow (background) ----------
+    const snow = document.getElementById("snow");
+    const sctx = snow.getContext("2d");
+    let snowFlakes = [];
+    let snowLast = 0;
+
+    function resizeSnow(){
+      snow.width = Math.floor(window.innerWidth * devicePixelRatio);
+      snow.height = Math.floor(window.innerHeight * devicePixelRatio);
+      snow.style.width = "100%";
+      snow.style.height = "100%";
+
+      // Adjust count by area; cap to keep performance stable
+      const area = window.innerWidth * window.innerHeight;
+      const target = clamp(Math.floor(area / 18000), 35, 120);
+
+      // grow or shrink smoothly
+      if (snowFlakes.length < target){
+        for (let i = snowFlakes.length; i < target; i++) snowFlakes.push(makeFlake(true));
+      } else if (snowFlakes.length > target){
+        snowFlakes = snowFlakes.slice(0, target);
+      }
+    }
+
+    function makeFlake(spawnRandomY=false){
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      return {
+        x: Math.random() * w,
+        y: (spawnRandomY ? Math.random() * h : -10),
+        r: 1.2 + Math.random() * 3.2,
+        vx: -0.3 + Math.random() * 0.6,
+        vy: 0.6 + Math.random() * 1.8,
+        drift: Math.random() * Math.PI * 2,
+        tw: 0.6 + Math.random() * 1.2
+      };
+    }
+
+    function snowFrame(ts){
+      const dt = Math.min(0.033, (ts - snowLast) / 1000 || 0.016);
+      snowLast = ts;
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      sctx.clearRect(0,0,snow.width,snow.height);
+      sctx.save();
+      sctx.scale(devicePixelRatio, devicePixelRatio);
+
+      for (let f of snowFlakes){
+        f.drift += dt * f.tw;
+        f.x += f.vx + Math.sin(f.drift) * 0.25;
+        f.y += f.vy;
+
+        if (f.y > h + 12){
+          // respawn at top
+          Object.assign(f, makeFlake(false));
+          f.y = -12;
+        }
+        if (f.x < -20) f.x = w + 20;
+        if (f.x > w + 20) f.x = -20;
+
+        // draw
+        sctx.beginPath();
+        sctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
+        sctx.fillStyle = "rgba(255,255,255,0.55)";
+        sctx.fill();
+      }
+
+      // subtle mist
+      sctx.fillStyle = "rgba(255,255,255,0.02)";
+      sctx.fillRect(0,0,w,h);
+
+      sctx.restore();
+      requestAnimationFrame(snowFrame);
+    }
+
+    // ---------- Init ----------
+    function init(){
+      items = parseNames(elNames.value);
+      drawWheel();
+      updateRemain();
+
+      logs = loadLogs();
+      renderLogs();
+
+      resizeSnow();
+      window.addEventListener("resize", resizeSnow);
+
+      requestAnimationFrame(snowFrame);
+    }
+    init();
+  </script>
+</body>
+</html>
